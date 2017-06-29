@@ -48,8 +48,7 @@ train_labels = labels.iloc[train_index]
 val_labels = labels.iloc[val_index]
 
 num_train = train_labels.shape[0]
-num_val = train_labels.shape[0]
-
+num_val = val_labels.shape[0]
 
 f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
 
@@ -60,19 +59,19 @@ for i, file_name in enumerate(tqdm(train_labels['image_name'])):
 
     imgs[i] = img
 
-f['y'] = train_labels.drop('image_name', 1).values
+f['y'] = train_labels.drop(['image_name', 'unified'], 1).values
 
 f.close()
 
 
 f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
 
-imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.uint8)
+imgs = f.create_dataset('X', (num_val, 256, 256, 3), dtype=np.uint8)
 
 for i, file_name in enumerate(tqdm(val_labels['image_name'])):
     img = cv2.imread(os.path.join(train_path, file_name))
     imgs[i] = img
 
-f['y'] = val_labels.drop('image_name', 1).values
+f['y'] = val_labels.drop(['image_name', 'unified'], 1).values
 
 f.close()
