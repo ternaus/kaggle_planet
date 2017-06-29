@@ -5,17 +5,13 @@ from __future__ import division
 
 import pandas as pd
 import os
-import numpy as np
-from sklearn.model_selection import StratifiedShuffleSplit
-from tqdm import tqdm
-import cv2
 from keras import backend as K
 from keras.applications.resnet50 import ResNet50
 from keras.layers import Dense
 from keras.models import Model
 import h5py
 import datetime
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, History
 from keras.layers import merge
 import tensorflow as tf
 from keras.layers.core import Lambda
@@ -117,6 +113,13 @@ def total_loss(y_true, y_pred):
     return K.binary_crossentropy(y_pred, y_true) - K.log(fbeta_loss(y_true, y_pred))
 
 
+def save_history(history, suffix):
+    if not os.path.isdir('history'):
+        os.mkdir('history')
+    filename = 'history/history_' + suffix + '.csv'
+    pd.DataFrame(history.history).to_csv(filename, index=False)
+
+
 if __name__ == '__main__':
     random_state = 2016
     data_path = '../data'
@@ -142,14 +145,19 @@ if __name__ == '__main__':
     now = datetime.datetime.now()
     suffix = str(now.strftime("%Y-%m-%d-%H-%M"))
 
+    history = History()
+
     callbacks = [
         ModelCheckpoint('cache/resnet_full_' + suffix + '.hdf5', monitor='val_loss',
                         save_best_only=True, verbose=1),
         EarlyStopping(patience=20, monitor='val_loss'),
+        history
     ]
 
     model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=500, callbacks=callbacks, shuffle="batch",
               batch_size=batch_size)
+
+    save_history(history, suffix)
 
     f_train.close()
     f_val.close()
