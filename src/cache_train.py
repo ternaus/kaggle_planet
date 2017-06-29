@@ -2,27 +2,27 @@
 data does not fit into memory => let's cache it into hdf5
 """
 from __future__ import division
-
+import os
+import cv2
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from sklearn.model_selection import StratifiedShuffleSplit
-import shutil
-import os
+import h5py
 
-data_path = os.path.abspath('../data')
+data_path = '../data'
 train_path = os.path.join(data_path, 'train-jpg')
 
 
 for i in ['train', 'val']:
     try:
-        os.mkdir(os.path.join(data_path, i + '_weather'))
+        os.mkdir(os.path.join(data_path, 'train_weather'))
     except:
         pass
 
     for class_name in ['0', '1', '2', '3']:
         try:
-            os.mkdir(os.path.join(data_path, i + '_weather', class_name))
+            os.mkdir(os.path.join(data_path, 'train_weather', class_name))
         except:
             pass
 
@@ -30,13 +30,13 @@ random_state = 2016
 
 labels = pd.read_csv(os.path.join(data_path, 'train_labels.csv'))
 
-labels['unified'] = np.nan
-labels.loc[labels['clear'] == 1, 'unified'] = '0'
-labels.loc[labels['cloudy'] == 1, 'unified'] = '1'
-labels.loc[labels['haze'] == 1, 'unified'] = '2'
-labels.loc[labels['partly_cloudy'] == 1, 'unified'] = '3'
-
 labels['image_name'] = labels['image_name'] + '.jpg'
+
+labels['unified'] = np.nan
+labels.loc[labels['clear'] == 1, 'unified'] = 0
+labels.loc[labels['cloudy'] == 1, 'unified'] = 1
+labels.loc[labels['haze'] == 1, 'unified'] = 2
+labels.loc[labels['partly_cloudy'] == 1, 'unified'] = 3
 
 labels = labels[labels['unified'].notnull()]
 
@@ -50,11 +50,29 @@ val_labels = labels.iloc[val_index]
 num_train = train_labels.shape[0]
 num_val = train_labels.shape[0]
 
-for file_name in tqdm(train_labels['image_name']):
-    class_name = train_labels.loc[train_labels['image_name'] == file_name, 'unified'].values[0]
-    shutil.copy(os.path.join(train_path, file_name), os.path.join(data_path, 'train_weather', class_name, file_name))
+
+f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+
+imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.uint8)
+
+for i, file_name in enumerate(tqdm(train_labels['image_name'])):
+    img = cv2.imread(os.path.join(train_path, file_name))
+
+    imgs[i] = img
+
+f['y'] = train_labels.drop('image_name', 1).values
+
+f.close()
 
 
-for file_name in tqdm(val_labels['image_name']):
-    class_name = val_labels.loc[val_labels['image_name'] == file_name, 'unified'].values[0]
-    shutil.copy(os.path.join(train_path, file_name), os.path.join(data_path, 'val_weather', class_name, file_name))
+f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+
+imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.uint8)
+
+for i, file_name in enumerate(tqdm(val_labels['image_name'])):
+    img = cv2.imread(os.path.join(train_path, file_name))
+    imgs[i] = img
+
+f['y'] = val_labels.drop('image_name', 1).values
+
+f.close()
