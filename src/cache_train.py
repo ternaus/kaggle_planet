@@ -13,19 +13,6 @@ import h5py
 data_path = '../data'
 train_path = os.path.join(data_path, 'train-jpg')
 
-
-for i in ['train', 'val']:
-    try:
-        os.mkdir(os.path.join(data_path, 'train_weather'))
-    except:
-        pass
-
-    for class_name in ['0', '1', '2', '3']:
-        try:
-            os.mkdir(os.path.join(data_path, 'train_weather', class_name))
-        except:
-            pass
-
 random_state = 2016
 
 labels = pd.read_csv(os.path.join(data_path, 'train_labels.csv'))
@@ -37,6 +24,9 @@ labels.loc[labels['clear'] == 1, 'unified'] = 0
 labels.loc[labels['cloudy'] == 1, 'unified'] = 1
 labels.loc[labels['haze'] == 1, 'unified'] = 2
 labels.loc[labels['partly_cloudy'] == 1, 'unified'] = 3
+
+
+weather_features = ['clear', 'cloudy', 'haze', 'partly_cloudy']
 
 labels = labels[labels['unified'].notnull()]
 
@@ -63,7 +53,8 @@ for i, file_name in enumerate(tqdm(train_labels['image_name'])):
 
     imgs[i] = img.astype(np.float16)
 
-f['y'] = train_labels.drop(['image_name', 'unified'], 1).values
+f['y'] = train_labels.drop(['image_name', 'unified'] + weather_features, 1).values
+f['y_weather'] = train_labels[weather_features].values
 
 f.close()
 
@@ -81,6 +72,7 @@ for i, file_name in enumerate(tqdm(val_labels['image_name'])):
 
     imgs[i] = img.astype(np.float16)
 
-f['y'] = val_labels.drop(['image_name', 'unified'], 1).values
+f['y'] = val_labels.drop(['image_name', 'unified'] + weather_features, 1).values
+f['y_weather'] = val_labels[weather_features].values
 
 f.close()
