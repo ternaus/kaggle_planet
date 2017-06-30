@@ -15,6 +15,9 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, History
 from keras.layers import merge
 import tensorflow as tf
 from keras.layers.core import Lambda
+import numpy as np
+import random
+from keras.optimizers import Adam
 
 
 def make_parallel(model, gpu_count):
@@ -74,6 +77,16 @@ def get_model():
     return model
 
 
+def save_model(model, cross):
+    json_string = model.to_json()
+    if not os.path.isdir('cache'):
+        os.mkdir('cache')
+    json_name = 'architecture_' + cross + '.json'
+    weight_name = 'model_weights_' + cross + '.h5'
+    open(os.path.join('cache', json_name), 'w').write(json_string)
+    model.save_weights(os.path.join('cache', weight_name), overwrite=True)
+
+
 def fbeta(y_true, y_pred, threshold_shift=0):
     beta = 2
 
@@ -120,13 +133,58 @@ def save_history(history, suffix):
     pd.DataFrame(history.history).to_csv(filename, index=False)
 
 
+def form_batch(X, y, batch_size):
+    X_batch = np.zeros((batch_size, 256, 256, 3))
+    y_batch = np.zeros((batch_size, num_classes))
+
+    for i in range(batch_size):
+        random_image = random.randint(0, X.shape[0] - 1)
+
+        y_batch[i] = np.array(y[random_image])
+        X_batch[i] = np.array(X[random_image])
+    return X_batch, y_batch
+
+
+def flip_axis(x, axis):
+    x = np.asarray(x).swapaxes(axis, 0)
+    x = x[::-1, ...]
+    x = x.swapaxes(0, axis)
+    return x
+
+
+def batch_generator(X, y, batch_size, horizontal_flip=False, vertical_flip=False, swap_axis=False):
+    while True:
+        X_batch, y_batch = form_batch(X, y, batch_size)
+
+        for i in range(X_batch.shape[0]):
+            xb = X_batch[i]
+
+            if horizontal_flip:
+                if np.random.random() < 0.5:
+                    xb = flip_axis(xb, 1)
+
+            if vertical_flip:
+                if np.random.random() < 0.5:
+                    xb = flip_axis(xb, 0)
+
+            if swap_axis:
+                if np.random.random() < 0.5:
+                    xb = xb.swapaxes(0, 1)
+
+            X_batch[i] = xb
+
+        yield X_batch, y_batch
+
+
 if __name__ == '__main__':
     random_state = 2016
     data_path = '../data'
 
+    num_classes = 17
+
     model = make_parallel(get_model(), 2)
+
     print('[{}] Compiling model...'.format(str(datetime.datetime.now())))
-    model.compile(optimizer='adam', loss=total_loss, metrics=['accuracy', fbeta, 'binary_crossentropy'])
 
     f_train = h5py.File(os.path.join(data_path, 'train_jpg.h5'))
     f_val = h5py.File(os.path.join(data_path, 'val_jpg.h5'))
@@ -150,12 +208,39 @@ if __name__ == '__main__':
     callbacks = [
         ModelCheckpoint('cache/resnet_full_' + suffix + '.hdf5', monitor='val_loss',
                         save_best_only=True, verbose=1),
-        EarlyStopping(patience=20, monitor='val_loss'),
+        EarlyStopping(patience=5, monitor='val_loss'),
         history
     ]
 
-    model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=500, callbacks=callbacks, shuffle="batch",
-              batch_size=batch_size)
+    save_model(model, "{batch_size}_{suffix}".format(batch_size=batch_size, suffix=suffix))
+
+    model.compile(optimizer=Adam(lr=1e-3), loss=total_loss, metrics=[fbeta, 'binary_crossentropy'])
+
+    model.fit_generator(batch_generator(X_train,
+                                        y_train,
+                                        batch_size,
+                                        vertical_flip=True,
+                                        horizontal_flip=True,
+                                        swap_axis=True),
+                        steps_per_epoch=1000,
+                        callbacks=callbacks,
+                        validation_data=(X_val, y_val),
+                        epochs=500)
+
+    model.compile(optimizer=Adam(lr=1e-4), loss=total_loss, metrics=[fbeta, 'binary_crossentropy'])
+
+    model.load_weights('cache/resnet_full_' + suffix + '.hdf5')
+
+    model.fit_generator(batch_generator(X_train,
+                                        y_train,
+                                        batch_size,
+                                        vertical_flip=True,
+                                        horizontal_flip=True,
+                                        swap_axis=True),
+                        steps_per_epoch=1000,
+                        callbacks=callbacks,
+                        validation_data=(X_val, y_val),
+                        epochs=500)
 
     save_history(history, suffix)
 
