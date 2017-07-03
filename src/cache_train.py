@@ -30,7 +30,7 @@ weather_features = ['clear', 'cloudy', 'haze', 'partly_cloudy']
 
 labels = labels[labels['unified'].notnull()]
 
-sss = StratifiedShuffleSplit(n_splits=2, test_size=0.2, random_state=random_state)
+sss = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=random_state)
 
 train_index, val_index = sss.split(labels['unified'].values.astype(int), labels['unified'].values.astype(int)).next()
 
@@ -42,37 +42,46 @@ num_val = val_labels.shape[0]
 
 f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
 
-imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.float16)
+# imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.float16)
+imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.uint8)
 
 for i, file_name in enumerate(tqdm(train_labels['image_name'])):
-    img = cv2.imread(os.path.join(train_path, file_name)).astype(np.float16)
+    # img = cv2.imread(os.path.join(train_path, file_name)).astype(np.float16)
+    img = cv2.imread(os.path.join(train_path, file_name))
 
-    img[:, :, 0] -= 103.939
-    img[:, :, 1] -= 116.779
-    img[:, :, 2] -= 123.68
+    # img[:, :, 0] -= 103.939
+    # img[:, :, 1] -= 116.779
+    # img[:, :, 2] -= 123.68
 
-    imgs[i] = img.astype(np.float16)
+    imgs[i] = img.astype(np.uint8)
 
-f['y'] = train_labels.drop(['image_name', 'unified'] + weather_features, 1).values
-f['y_weather'] = train_labels[weather_features].values
+f['y'] = train_labels.drop(['image_name', 'unified'], 1).values
+# f['y'] = train_labels.drop(['image_name', 'unified'] + weather_features, 1).values
+# f['y_weather'] = train_labels[weather_features].values
 
 f.close()
-
-
+#
+#
 f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
 
-imgs = f.create_dataset('X', (num_val, 256, 256, 3), dtype=np.float16)
+# imgs = f.create_dataset('X', (num_val, 256, 256, 3), dtype=np.float16)
+imgs = f.create_dataset('X', (num_val, 256, 256, 3), dtype=np.uint8)
 
 for i, file_name in enumerate(tqdm(val_labels['image_name'])):
-    img = cv2.imread(os.path.join(train_path, file_name)).astype(np.float16)
+    # img = cv2.imread(os.path.join(train_path, file_name)).astype(np.float16)
+    img = cv2.imread(os.path.join(train_path, file_name)).astype(np.uint8)
 
-    img[:, :, 0] -= 103.939
-    img[:, :, 1] -= 116.779
-    img[:, :, 2] -= 123.68
+    # img[:, :, 0] -= 103.939
+    # img[:, :, 1] -= 116.779
+    # img[:, :, 2] -= 123.68
 
-    imgs[i] = img.astype(np.float16)
+    # imgs[i] = img.astype(np.float16)
+    imgs[i] = img.astype(np.uint8)
 
-f['y'] = val_labels.drop(['image_name', 'unified'] + weather_features, 1).values
-f['y_weather'] = val_labels[weather_features].values
+f['y'] = val_labels.drop(['image_name', 'unified'], 1).values
+# f['y'] = val_labels.drop(['image_name', 'unified'] + weather_features, 1).values
+# f['y_weather'] = val_labels[weather_features].values
+
+print np.array(f['y']).shape
 
 f.close()
