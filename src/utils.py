@@ -83,13 +83,13 @@ def write_event(log, step, **data):
 
 def add_args(parser):
     arg = parser.add_argument
-    arg('root', help='checkpoint root')
+    # arg('root', help='checkpoint root')
     arg('--batch-size', type=int, default=4)
     arg('--n-epochs', type=int, default=100)
     arg('--lr', type=float, default=0.0001)
     arg('--workers', type=int, default=2)
     arg('--fold', type=int, default=1)
-    arg('--n-folds', type=int, default=5)
+    # arg('--n-folds', type=int, default=5)
     arg('--clean', action='store_true')
     arg('--epoch-size', type=int)
 
