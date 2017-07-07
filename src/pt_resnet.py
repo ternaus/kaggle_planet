@@ -20,7 +20,7 @@ from torch import nn
 from torch.autograd import Variable
 from torch.nn import MultiLabelSoftMarginLoss
 
-from torchvision.models import resnet18
+from torchvision.models import resnet18, resnet50
 
 
 class KaggleAmazonDataset(Dataset):
@@ -80,23 +80,21 @@ if __name__ == '__main__':
     train_loader = DataLoader(dset_train,
                               batch_size=4,
                               shuffle=True,
-                              num_workers=4,  # 1 for CUDA
-                              # pin_memory=True  # CUDA only
+                              num_workers=1,  # 1 for CUDA
+                              pin_memory=True  # CUDA only
                               )
 
     num_classes = 17
-    net = resnet18(pretrained=True)
-    # net.fc = nn.Linear(net.fc.in_features, num_classes).cuda()
-    net.fc = nn.Linear(net.fc.in_features, num_classes)
+    net = resnet18(pretrained=True).cuda()
+    net.fc = nn.Linear(net.fc.in_features, num_classes).cuda()
 
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
     criterion = MultiLabelSoftMarginLoss()
 
-
     def train(epoch):
         net.train()
         for batch_idx, (data, target) in enumerate(train_loader):
-            # data, target = data.cuda(async=True), target.cuda(async=True)  # On GPU
+            data, target = data.cuda(async=True), target.cuda(async=True)  # On GPU
             data, target = Variable(data), Variable(target)
             optimizer.zero_grad()
             output = net(data)
