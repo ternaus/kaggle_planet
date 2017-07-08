@@ -30,7 +30,7 @@ weather_features = ['clear', 'cloudy', 'haze', 'partly_cloudy']
 
 labels = labels[labels['unified'].notnull()]
 
-sss = StratifiedShuffleSplit(n_splits=2, test_size=0.1, random_state=random_state)
+sss = StratifiedShuffleSplit(n_splits=2, test_size=0.2, random_state=random_state)
 
 train_index, val_index = sss.split(labels['unified'].values.astype(int), labels['unified'].values.astype(int)).next()
 
@@ -40,7 +40,8 @@ val_labels = labels.iloc[val_index]
 num_train = train_labels.shape[0]
 num_val = val_labels.shape[0]
 
-f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+# f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+f = h5py.File(os.path.join(data_path, 'train_jpg.h5'), 'w')
 
 imgs = f.create_dataset('X', (num_train, 256, 256, 3), dtype=np.uint8)
 
@@ -52,7 +53,8 @@ for i, file_name in enumerate(tqdm(train_labels['image_name'])):
 f['y'] = train_labels.drop(['image_name', 'unified'], 1).values
 
 f.close()
-f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+# f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w', compression='blosc:lz4', compression_opts=9)
+f = h5py.File(os.path.join(data_path, 'val_jpg.h5'), 'w')
 
 imgs = f.create_dataset('X', (num_val, 256, 256, 3), dtype=np.uint8)
 

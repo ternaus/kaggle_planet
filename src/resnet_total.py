@@ -247,8 +247,8 @@ if __name__ == '__main__':
 
     print('[{}] Compiling model...'.format(str(datetime.datetime.now())))
 
-    f_train = h5py.File(os.path.join(data_path, 'train_jpg.h5'))
-    f_val = h5py.File(os.path.join(data_path, 'val_jpg.h5'))
+    f_train = h5py.File(os.path.join(data_path, 'train_jpg.hdf5'))
+    f_val = h5py.File(os.path.join(data_path, 'val_jpg.hdf5'))
 
     X_train = f_train['X']
     y_train = f_train['y']

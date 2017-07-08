@@ -155,7 +155,6 @@ def train(args, model, criterion, train_loader, valid_loader, validation, init_o
 
     report_each = 10
     save_prediction_each = report_each * 10
-    # log = root.joinpath('train.log').open('at', encoding='utf8')
     valid_losses = []
     lr_reset_epoch = epoch
     for epoch in range(epoch, n_epochs + 1):
@@ -179,7 +178,7 @@ def train(args, model, criterion, train_loader, valid_loader, validation, init_o
             tq.update(batch_size)
             losses.append(loss.data[0])
             mean_loss = np.mean(losses[-report_each:])
-            tq.set_postfix(loss='{:.3f}'.format(mean_loss))
+            tq.set_postfix(loss='{:.4f}'.format(mean_loss))
             if i and i % report_each == 0:
                 if save_predictions and i % save_prediction_each == 0:
                     p_i = (i // save_prediction_each) % 5
@@ -189,11 +188,11 @@ def train(args, model, criterion, train_loader, valid_loader, validation, init_o
         valid_metrics = validation(model, criterion, valid_loader)
         valid_loss = valid_metrics['valid_loss']
         valid_losses.append(valid_loss)
+
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             shutil.copy(str(model_path), str(best_model_path))
-        elif (patience and epoch - lr_reset_epoch > patience and
-              min(valid_losses[-patience:]) > best_valid_loss):
+        elif patience and epoch - lr_reset_epoch > patience and min(valid_losses[-patience:]) > best_valid_loss:
             # "patience" epochs without improvement
             lr /= 5
             lr_reset_epoch = epoch
@@ -255,21 +254,21 @@ if __name__ == '__main__':
     dset_val = KaggleAmazonDataset(val_labels_df, train_path, img_ext, transformations_val)
 
     train_loader = DataLoader(dset_train,
-                              batch_size=4,
+                              batch_size=16,
                               shuffle=True,
                               num_workers=1,  # 1 for CUDA
                               pin_memory=True  # CUDA only
                               )
 
     val_loader = DataLoader(dset_val,
-                              batch_size=4,
-                              shuffle=False,
-                              num_workers=1,  # 1 for CUDA
-                              pin_memory=True  # CUDA only
-                              )
+                            batch_size=16,
+                            shuffle=False,
+                            num_workers=1,  # 1 for CUDA pin_memory=True  # CUDA only
+                            pin_memory=True
+                            )
 
     num_classes = 17
-    model = resnet18(pretrained=True).cuda()
+    model = resnet50(pretrained=True).cuda()
     model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
 
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
