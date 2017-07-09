@@ -29,6 +29,7 @@ import shutil
 import argparse
 from torch.optim import Adam
 import data_loader
+import augmentations
 
 
 def f2_score(y_true, y_pred):
@@ -86,7 +87,17 @@ if __name__ == '__main__':
 
     batch_size = args.batch_size
 
-    train_loader, valid_loader = data_loader.get_loaders(batch_size, fold=0)
+    train_transform = transforms.Compose([
+        transforms.RandomSizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        augmentations.RandomVerticalFlip(0.5),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
+    train_loader, valid_loader = data_loader.get_loaders(batch_size,
+                                                         train_transform=train_transform,
+                                                         fold=0)
 
     num_classes = 17
 
