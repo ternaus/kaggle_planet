@@ -37,31 +37,39 @@ class CSVDataset(data.Dataset):
     return X, y
 
 
-def get_loaders(batch_size, fold=0):
-    train_transform = transforms.Compose([
-      transforms.RandomSizedCrop(224),
-      transforms.RandomHorizontalFlip(),
-      transforms.ToTensor(),
-      transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+def get_loaders(batch_size,
+                fold=0,
+                train_transform=None,
+                valid_transform=None):
+
+    # if not train_transform:
+    #     train_transform = transforms.Compose([
+    #         transforms.RandomSizedCrop(224),
+    #         transforms.RandomHorizontalFlip(),
+    #         transforms.ToTensor(),
+    #         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    #     ])
+
     train_dataset = CSVDataset(f'../data/fold{fold}/train.csv', transform=train_transform)
     train_loader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True,
-                                   num_workers=4,
+                                   num_workers=8,
                                    pin_memory=True)
 
-    valid_transform = transforms.Compose([
-      transforms.Scale(256),
-      transforms.CenterCrop(224),
-      transforms.ToTensor(),
-      transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+    if not valid_transform:
+        valid_transform = transforms.Compose([
+          transforms.Scale(256),
+          transforms.CenterCrop(224),
+          transforms.ToTensor(),
+          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        ])
+
     valid_dataset = CSVDataset(f'../data/fold{fold}/val.csv', transform=valid_transform)
     valid_loader = data.DataLoader(valid_dataset,
                                    batch_size=batch_size,
                                    shuffle=False,
-                                   num_workers=4,
+                                   num_workers=8,
                                    pin_memory=True)
 
     return train_loader, valid_loader

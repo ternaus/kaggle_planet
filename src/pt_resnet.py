@@ -92,6 +92,10 @@ if __name__ == '__main__':
         transforms.RandomHorizontalFlip(),
         augmentations.RandomVerticalFlip(0.5),
         augmentations.Random90Rotation(),
+        # augmentations.Rotate(),
+        # augmentations.GaussianBlur(),
+        augmentations.Add(-10, 10, per_channel=True),
+        augmentations.ContrastNormalization(0.9, 1.1, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
