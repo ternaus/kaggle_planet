@@ -66,9 +66,9 @@ def add_args(parser):
     arg = parser.add_argument
     arg('root', help='checkpoint root')
     arg('--batch-size', type=int, default=4)
-    arg('--n-epochs', type=int, default=100)
+    arg('--n-epochs', type=int, default=30)
     arg('--lr', type=float, default=0.0001)
-    arg('--workers', type=int, default=2)
+    arg('--workers', type=int, default=8)
     arg('--fold', type=int, default=0)
     arg('--n-folds', type=int, default=10)
     arg('--clean', action='store_true')
@@ -94,8 +94,8 @@ if __name__ == '__main__':
         augmentations.Random90Rotation(),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
-        augmentations.Add(-10, 10, per_channel=True),
-        augmentations.ContrastNormalization(0.9, 1.1, per_channel=True),
+        augmentations.Add(-5, 5, per_channel=True),
+        augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -116,7 +116,6 @@ if __name__ == '__main__':
 
         model = nn.DataParallel(model, device_ids=device_ids).cuda()
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
     criterion = MultiLabelSoftMarginLoss()
 
     n_epochs = 2
@@ -130,5 +129,5 @@ if __name__ == '__main__':
         valid_loader=valid_loader,
         validation=validation,
         # save_predictions=save_predictions,
-        patience=2,
+        patience=3,
     )

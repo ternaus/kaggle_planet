@@ -96,16 +96,22 @@ def write_event(log, step: int, **data):
 #     arg('--epoch-size', type=int)
 
 
-def train(args, model: nn.Module, criterion, *, train_loader, valid_loader,
-          validation, init_optimizer, save_predictions=None, n_epochs=None,
+def train(args,
+          model: nn.Module,
+          criterion, *, train_loader,
+          valid_loader,
+          validation,
+          init_optimizer,
+          save_predictions=None,
+          n_epochs=None,
           patience=2):
     lr = args.lr
     n_epochs = n_epochs or args.n_epochs
     optimizer = init_optimizer(lr)
 
     root = Path(args.root)
-    model_path = root / 'model.pt'
-    best_model_path = root / 'best-model.pt'
+    model_path = root / 'model_{}.pt'.format(args.fold)
+    best_model_path = root / 'best-model_{}.pt'.format(args.fold)
     if model_path.exists():
         state = torch.load(str(model_path))
         epoch = state['epoch']
@@ -127,7 +133,7 @@ def train(args, model: nn.Module, criterion, *, train_loader, valid_loader,
 
     report_each = 10
     save_prediction_each = report_each * 20
-    log = root.joinpath('train.log').open('at', encoding='utf8')
+    log = root.joinpath('train_{}.log'.format(args.fold)).open('at', encoding='utf8')
     valid_losses = []
     lr_reset_epoch = epoch
     for epoch in range(epoch, n_epochs + 1):
