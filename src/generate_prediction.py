@@ -4,6 +4,7 @@ Script generates predictions from model.
 
 
 import utils
+import augmentations
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ def f2_score(y_true, y_pred):
     return fbeta_score(y_true, y_pred, beta=2)
 
 
-class PredictionDataset:
+class PredictionDatasetPure:
     def __init__(self, paths, n_test_aug):
         self.paths = paths
         self.n_test_aug = n_test_aug
@@ -37,17 +38,41 @@ class PredictionDataset:
     def __getitem__(self, idx):
         path = self.paths[idx % len(self.paths)]
         image = utils.load_image(path)
-        return valid_transform(image), path.stem
+        return valid_transform_pure(image), path.stem
 
 
-def predict(model, paths, batch_size: int, n_test_aug: int):
-    loader = DataLoader(
-        dataset=PredictionDataset(paths, n_test_aug),
-        shuffle=False,
-        batch_size=batch_size,
-        num_workers=4,
-        pin_memory=True
-    )
+class PredictionDatasetAug:
+    def __init__(self, paths, n_test_aug):
+        self.paths = paths
+        self.n_test_aug = n_test_aug
+
+    def __len__(self):
+        return len(self.paths) * self.n_test_aug
+
+    def __getitem__(self, idx):
+        path = self.paths[idx % len(self.paths)]
+        image = utils.load_image(path)
+        return valid_transform_aug(image), path.stem
+
+
+def predict(model, paths, batch_size: int, n_test_aug: int, aug=False):
+    if aug:
+        loader = DataLoader(
+            dataset=PredictionDatasetAug(paths, n_test_aug),
+            shuffle=False,
+            batch_size=batch_size,
+            num_workers=8,
+            pin_memory=True
+        )
+    else:
+        loader = DataLoader(
+            dataset=PredictionDatasetPure(paths, n_test_aug),
+            shuffle=False,
+            batch_size=batch_size,
+            num_workers=8,
+            pin_memory=True
+        )
+
     model.eval()
     all_outputs = []
     all_stems = []
@@ -112,10 +137,26 @@ def apply_threasholds(y_pred, threasholds):
     return temp
 
 
+def group_aug(val_p):
+    """
+    Average augmented predictions
+    :param val_p_aug:
+    :return:
+    """
+    df = pd.DataFrame(val_p[0])
+    df['id'] = val_p[1]
+    g = df.groupby('id').mean()
+    g = g.reset_index()
+    g = g.sort_values(by='id')
+    return g.drop('id', 1).values, g['id'].values
+
+
 if __name__ == '__main__':
 
     batch_size = 32
     num_classes = 17
+    num_aug = 10
+
     data_path = '../data'
     model_name = 'resnet101'
 
@@ -132,19 +173,30 @@ if __name__ == '__main__':
     sample = pd.read_csv(os.path.join(data_path, 'sample_submission_v2.csv'))
     test_paths = [os.path.join('../data/test-jpg', x + '.jpg') for x in sample['image_name']]
 
-    valid_transform = transforms.Compose([
+    valid_transform_pure = transforms.Compose([
         transforms.Scale(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
+    valid_transform_aug = transforms.Compose([
+        transforms.Scale(256),
+        transforms.RandomCrop(224),
+        transforms.RandomHorizontalFlip(),
+        augmentations.RandomVerticalFlip(0.5),
+        augmentations.Random90Rotation(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+
     for fold in range(0, 10):
         val_labels = pd.read_csv('../data/fold{fold}/val.csv'.format(fold=fold))
+        val_labels['id'] = val_labels['path'].str.split('/').str.get(-1)
 
-        y_true = val_labels.drop('path', 1)
+        y_true = val_labels.sort_values(by='id').drop(['path', 'id'], 1)
 
-        new_columns = [x for x in val_labels.columns if x != 'path']
+        new_columns = y_true.values
 
         model = get_model(num_classes, model_name)
         model = nn.DataParallel(model, device_ids=[0]).cuda()
@@ -156,42 +208,84 @@ if __name__ == '__main__':
         best_valid_loss = state['best_valid_loss']
         model.load_state_dict(state['model'])
 
-        val_p = predict(model, val_labels['path'].apply(Path), batch_size, 1)
+        val_p = predict(model, val_labels['path'].apply(Path), batch_size, 1, aug=False)
 
         val_predictions = val_p[0]
         val_image_names = val_p[1]
 
+        val_predictions, val_image_names = group_aug(val_p)
+
+        val_p_aug = predict(model, val_labels['path'].apply(Path), batch_size, num_aug, aug=True)
+
+        val_predictions_aug, val_image_names_aug = group_aug(val_p_aug)
+
         # Find val_loss
         val_loss = log_loss(y_true.values.ravel(), val_predictions.ravel(), eps=1e-7)
         print('val_loss = ', val_loss)
+
+        val_loss_aug = log_loss(y_true.values.ravel(), val_predictions_aug.ravel(), eps=1e-7)
+        print('val_loss_aug = ', val_loss_aug)
+
+        assert val_loss > val_loss_aug
+
         # Find raw fbeta loss
         raw_f2 = f2_score(y_true.values.ravel(), val_predictions.ravel() > 0.2)
         print('raw f2 = ', raw_f2)
+
+        raw_f2_aug = f2_score(y_true.values.ravel(), val_predictions_aug.ravel() > 0.2)
+        print('raw f2 aug = ', raw_f2_aug)
+
         # Find threasholds
         threasholds = find_threasholds(y_true, val_predictions)
         val_predictions_threasholded = apply_threasholds(val_predictions, threasholds)
         tuned_f2 = f2_score(y_true.values.ravel(), val_predictions_threasholded.ravel())
         print('tuned f2 = ', tuned_f2)
 
-        test_p = predict(model, list(map(Path, test_paths)), batch_size, 1)
-        test_predictions = test_p[0]
-        test_image_names = test_p[1]
+        # Find threasholds aug
+        threasholds_aug = find_threasholds(y_true, val_predictions_aug)
+        val_predictions_threasholded_aug = apply_threasholds(val_predictions_aug, threasholds_aug)
+        tuned_f2_aug = f2_score(y_true.values.ravel(), val_predictions_threasholded_aug.ravel())
+        print('tuned f2 aug = ', tuned_f2_aug)
+
+        assert tuned_f2 < tuned_f2_aug
+
+        test_p = predict(model, list(map(Path, test_paths)), batch_size, 1, aug=False)
+        test_predictions, test_image_names = group_aug(test_p)
+
+        test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, 1, aug=True)
+        test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
 
         # Save to h5py
         f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
 
         f['val_prediction'] = val_predictions
+        f['val_prediction'] = val_predictions_aug
+
         f['val_true'] = y_true.values
         f['val_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names))
+        f['val_ids_aug'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names_aug))
+
         f['val_loss'] = val_loss
+        f['val_loss_aug'] = val_loss_aug
+
         f['raw_f2'] = raw_f2
         f['tuned_f2'] = tuned_f2
+
+        f['raw_f2_aug'] = raw_f2_aug
+        f['tuned_f2_aug'] = tuned_f2_aug
 
         threasholds_keys, threasholds_values = zip(*threasholds.items())
         f['threasholds_keys'] = threasholds_keys
         f['threasholds_values'] = threasholds_values
 
+        threasholds_keys_aug, threasholds_values_aug = zip(*threasholds_aug.items())
+        f['threasholds_keys_aug'] = threasholds_keys_aug
+        f['threasholds_values_aug'] = threasholds_values_aug
+
         f['test_preds'] = test_predictions
         f['test_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names))
+
+        f['test_preds_aug'] = test_predictions_aug
+        f['test_ids_aug'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names_aug))
 
         f.close()
