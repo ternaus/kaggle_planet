@@ -19,6 +19,8 @@ from torch.autograd import Variable
 from torch.nn import MultiLabelSoftMarginLoss
 
 from torchvision.models import resnet18, resnet50
+from torchvision.models import densenet121
+
 import torch.nn.functional as F
 import utils
 import tqdm
@@ -56,9 +58,13 @@ def validation(model, criterion, valid_loader):
     return {'valid_loss': valid_loss, 'valid_f2': valid_f2}
 
 
-def get_model(num_classes):
-    model = resnet50(pretrained=True).cuda()
-    model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+def get_model(num_classes, model_type='resnet'):
+    if model_type == 'resnet':
+        model = resnet50(pretrained=True).cuda()
+        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+    elif model_type == 'densenet':
+        model = densenet121(pretrained=True).cuda()
+        model.classifier = nn.Linear(model.classifier.in_features, num_classes).cuda()
     return model
 
 
@@ -118,8 +124,6 @@ if __name__ == '__main__':
 
     criterion = MultiLabelSoftMarginLoss()
 
-    n_epochs = 2
-
     utils.train(
         init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
         args=args,
@@ -129,5 +133,5 @@ if __name__ == '__main__':
         valid_loader=valid_loader,
         validation=validation,
         # save_predictions=save_predictions,
-        patience=3,
+        patience=2,
     )
