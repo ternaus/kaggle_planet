@@ -5,6 +5,7 @@ Extra augmentations for pytorch
 from imgaug import augmenters as iaa
 import numpy as np
 from PIL import Image
+import random
 
 
 class RandomVerticalFlip(object):
@@ -39,6 +40,22 @@ class Random90Rotation(object):
         img_n = augmentor.augment_image(img_array)
 
         return Image.fromarray(img_n, mode='RGB')
+
+
+class D4(object):
+    """Random transformation from D4 group
+    """
+    def __call__(self, img):
+        if random.random() < 0.5:
+            img = np.transpose(img, [1, 0, 2])
+
+        if random.random() < 0.5:
+            img = np.flipud(img)
+
+        if random.random() < 0.5:
+            img = np.fliplr(img)
+
+        return np.copy(img)
 
 
 class GaussianBlur(object):

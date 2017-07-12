@@ -153,12 +153,12 @@ def group_aug(val_p):
 
 if __name__ == '__main__':
 
-    batch_size = 32
+    batch_size = 192
     num_classes = 17
-    num_aug = 10
+    num_aug = 17
 
     data_path = '../data'
-    model_name = 'resnet101'
+    model_name = 'resnet50'
 
     try:
         os.mkdir(os.path.join(data_path, 'predictions'))
@@ -183,9 +183,10 @@ if __name__ == '__main__':
     valid_transform_aug = transforms.Compose([
         transforms.Scale(256),
         transforms.RandomCrop(224),
-        transforms.RandomHorizontalFlip(),
-        augmentations.RandomVerticalFlip(0.5),
-        augmentations.Random90Rotation(),
+        augmentations.D4(),
+        # transforms.RandomHorizontalFlip(),
+        # augmentations.RandomVerticalFlip(0.5),
+        # augmentations.Random90Rotation(),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -199,7 +200,7 @@ if __name__ == '__main__':
         new_columns = y_true.values
 
         model = get_model(num_classes, model_name)
-        model = nn.DataParallel(model, device_ids=[0]).cuda()
+        model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
         state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))
 
@@ -252,7 +253,7 @@ if __name__ == '__main__':
         test_p = predict(model, list(map(Path, test_paths)), batch_size, 1, aug=False)
         test_predictions, test_image_names = group_aug(test_p)
 
-        test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, 1, aug=True)
+        test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, num_aug, aug=True)
         test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
 
         # Save to h5py

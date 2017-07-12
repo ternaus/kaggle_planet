@@ -95,9 +95,10 @@ if __name__ == '__main__':
 
     train_transform = transforms.Compose([
         transforms.RandomSizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        augmentations.RandomVerticalFlip(0.5),
-        augmentations.Random90Rotation(),
+        augmentations.D4(),
+        # transforms.RandomHorizontalFlip(),
+        # augmentations.RandomVerticalFlip(0.5),
+        # augmentations.Random90Rotation(),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
         augmentations.Add(-5, 5, per_channel=True),
