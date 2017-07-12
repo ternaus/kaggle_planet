@@ -19,6 +19,7 @@ import torch
 from sklearn.metrics import log_loss
 import h5py
 import os
+from pt_model import get_model
 
 
 def f2_score(y_true, y_pred):
@@ -85,16 +86,6 @@ def predict(model, paths, batch_size: int, n_test_aug: int, aug=False):
     return np.vstack(all_outputs), all_stems
 
 
-def get_model(num_classes, model_name):
-    if model_name == 'resnet50':
-        model = resnet50(pretrained=True).cuda()
-        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
-    elif model_name == 'resnet101':
-        model = resnet101(pretrained=True).cuda()
-        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
-    return model
-
-
 def threashold_pred(y_pred, dict_th):
     temp = y_pred.copy()
 
@@ -153,10 +144,9 @@ def group_aug(val_p):
 
 
 if __name__ == '__main__':
-
     batch_size = 192
     num_classes = 17
-    num_aug = 3
+    num_aug = 17
 
     data_path = '../data'
     model_name = 'resnet50'
@@ -200,7 +190,7 @@ if __name__ == '__main__':
 
         new_columns = y_true.columns
 
-        model = get_model(model_name, num_classes)
+        model = get_model(num_classes, model_name)
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
         state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))

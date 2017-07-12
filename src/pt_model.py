@@ -18,7 +18,7 @@ from torch import nn
 from torch.autograd import Variable
 from torch.nn import MultiLabelSoftMarginLoss
 
-from torchvision.models import resnet18, resnet50
+from torchvision.models import resnet50, resnet152
 from torchvision.models import densenet121
 
 import torch.nn.functional as F
@@ -58,11 +58,17 @@ def validation(model, criterion, valid_loader):
     return {'valid_loss': valid_loss, 'valid_f2': valid_f2}
 
 
-def get_model(num_classes, model_type='resnet'):
-    if model_type == 'resnet':
+def get_model(num_classes, model_type='resnet50'):
+    if model_type == 'resnet50':
         model = resnet50(pretrained=True).cuda()
         model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
-    elif model_type == 'densenet':
+    elif model_type == 'resnet101':
+        model = resnet101(pretrained=True).cuda()
+        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+    elif model_type == 'resnet152':
+        model = resnet152(pretrained=True).cuda()
+        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+    elif model_type == 'densenet121':
         model = densenet121(pretrained=True).cuda()
         model.classifier = nn.Linear(model.classifier.in_features, num_classes).cuda()
     return model
@@ -96,9 +102,6 @@ if __name__ == '__main__':
     train_transform = transforms.Compose([
         transforms.RandomSizedCrop(224),
         augmentations.D4(),
-        # transforms.RandomHorizontalFlip(),
-        # augmentations.RandomVerticalFlip(0.5),
-        # augmentations.Random90Rotation(),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
         augmentations.Add(-5, 5, per_channel=True),
