@@ -109,7 +109,6 @@ def apply_threasholds(y_pred, threasholds):
 
 
 if __name__ == '__main__':
-    fold = 0
 
     batch_size = 32
     num_classes = 17
@@ -136,60 +135,59 @@ if __name__ == '__main__':
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    val_labels = pd.read_csv('../data/fold{fold}/val.csv'.format(fold=fold))
+    for fold in range(0, 10):
+        val_labels = pd.read_csv('../data/fold{fold}/val.csv'.format(fold=fold))
 
-    y_true = val_labels.drop('path', 1)
+        y_true = val_labels.drop('path', 1)
 
-    new_columns = [x for x in val_labels.columns if x != 'path']
+        new_columns = [x for x in val_labels.columns if x != 'path']
 
-    model = get_model(num_classes)
-    model = nn.DataParallel(model, device_ids=[0]).cuda()
+        model = get_model(num_classes)
+        model = nn.DataParallel(model, device_ids=[0]).cuda()
 
-    if model_name == 'resnet50':
-        state = torch.load('../src/models/Resnet50/best-model_{fold}.pt'.format(fold=fold))
+        if model_name == 'resnet50':
+            state = torch.load('../src/models/Resnet50/best-model_{fold}.pt'.format(fold=fold))
 
-    epoch = state['epoch']
-    step = state['step']
-    best_valid_loss = state['best_valid_loss']
-    model.load_state_dict(state['model'])
+        epoch = state['epoch']
+        step = state['step']
+        best_valid_loss = state['best_valid_loss']
+        model.load_state_dict(state['model'])
 
-    val_p = predict(model, val_labels['path'].apply(Path), batch_size, 1)
+        val_p = predict(model, val_labels['path'].apply(Path), batch_size, 1)
 
-    val_predictions = val_p[0]
-    val_image_names = val_p[1]
+        val_predictions = val_p[0]
+        val_image_names = val_p[1]
 
-    # Find val_loss
-    val_loss = log_loss(y_true.values.ravel(), val_predictions.ravel(), eps=1e-7)
-    print('val_loss = ', val_loss)
-    # Find raw fbeta loss
-    raw_f2 = f2_score(y_true.values.ravel(), val_predictions.ravel() > 0.2)
-    print('raw f2 = ', raw_f2)
-    # Find threasholds
-    threasholds = find_threasholds(y_true, val_predictions)
-    val_predictions_threasholded = apply_threasholds(val_predictions, threasholds)
-    tuned_f2 = f2_score(y_true.values.ravel(), val_predictions_threasholded.ravel())
-    print('tuned f2 = ', tuned_f2)
+        # Find val_loss
+        val_loss = log_loss(y_true.values.ravel(), val_predictions.ravel(), eps=1e-7)
+        print('val_loss = ', val_loss)
+        # Find raw fbeta loss
+        raw_f2 = f2_score(y_true.values.ravel(), val_predictions.ravel() > 0.2)
+        print('raw f2 = ', raw_f2)
+        # Find threasholds
+        threasholds = find_threasholds(y_true, val_predictions)
+        val_predictions_threasholded = apply_threasholds(val_predictions, threasholds)
+        tuned_f2 = f2_score(y_true.values.ravel(), val_predictions_threasholded.ravel())
+        print('tuned f2 = ', tuned_f2)
 
-    test_p = predict(model, list(map(Path, test_paths)), batch_size, 1)
-    test_predictions = test_p[0]
-    test_image_names = test_p[1]
+        test_p = predict(model, list(map(Path, test_paths)), batch_size, 1)
+        test_predictions = test_p[0]
+        test_image_names = test_p[1]
 
-    # Save to h5py
-    f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
+        # Save to h5py
+        f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
 
-    print(list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names))[:10])
+        f['val_prediction'] = val_predictions
+        f['val_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names))
+        f['val_loss'] = val_loss
+        f['raw_f2'] = raw_f2
+        f['tuned_f2'] = tuned_f2
 
-    f['val_prediction'] = val_predictions
-    f['val_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names))
-    f['val_loss'] = val_loss
-    f['raw_f2'] = raw_f2
-    f['tuned_f2'] = tuned_f2
+        threasholds_keys, threasholds_values = zip(*threasholds.items())
+        f['threasholds_keys'] = threasholds_keys
+        f['threasholds_values'] = threasholds_values
 
-    threasholds_keys, threasholds_values = zip(*threasholds.items())
-    f['threasholds_keys'] = threasholds_keys
-    f['threasholds_values'] = threasholds_values
+        f['test_preds'] = test_predictions
+        f['test_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names))
 
-    f['test_preds'] = test_predictions
-    f['test_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names))
-
-    f.close()
+        f.close()
