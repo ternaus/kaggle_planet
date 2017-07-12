@@ -104,6 +104,7 @@ def threashold_pred(y_pred, dict_th):
 
 
 def find_threasholds(y_true, y_pred):
+    num_classes = 17
     threasholds = dict(zip(range(num_classes), [0.2] * num_classes))
 
     for c in range(num_classes):
@@ -113,7 +114,7 @@ def find_threasholds(y_true, y_pred):
 
         scores = []
 
-        t_range = np.arange(0, 1, 0.01)
+        t_range = np.arange(0.1, 0.5, 0.01)
 
         temp1 = temp.copy()
 
@@ -155,7 +156,7 @@ if __name__ == '__main__':
 
     batch_size = 192
     num_classes = 17
-    num_aug = 17
+    num_aug = 3
 
     data_path = '../data'
     model_name = 'resnet50'
@@ -197,9 +198,9 @@ if __name__ == '__main__':
 
         y_true = val_labels.sort_values(by='id').drop(['path', 'id'], 1)
 
-        new_columns = y_true.values
+        new_columns = y_true.columns
 
-        model = get_model(num_classes, model_name)
+        model = get_model(model_name, num_classes)
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
         state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))
@@ -260,7 +261,7 @@ if __name__ == '__main__':
         f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
 
         f['val_prediction'] = val_predictions
-        f['val_prediction'] = val_predictions_aug
+        f['val_prediction_aug'] = val_predictions_aug
 
         f['val_true'] = y_true.values
         f['val_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names))
@@ -284,9 +285,14 @@ if __name__ == '__main__':
         f['threasholds_values_aug'] = threasholds_values_aug
 
         f['test_preds'] = test_predictions
-        f['test_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names))
+        df = pd.DataFrame(test_predictions, columns=new_columns)
+        df['image_name'] = test_image_names
+        df.to_hdf(os.path.join(data_path, 'predictions', model_name, 'test_predictions_{fold}.hdf5'.format(fold=fold)), key='Table')
 
         f['test_preds_aug'] = test_predictions_aug
-        f['test_ids_aug'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), test_image_names_aug))
+
+        df = pd.DataFrame(test_predictions_aug, columns=new_columns)
+        df['image_name'] = test_image_names_aug
+        df.to_hdf(os.path.join(data_path, 'predictions', model_name, 'test_predictions_aug_{fold}.hdf5'.format(fold=fold)), key='Table')
 
         f.close()
