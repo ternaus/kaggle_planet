@@ -8,7 +8,7 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader
-from torchvision.models import resnet50
+from torchvision.models import resnet50, resnet101
 from pathlib import Path
 import torch.nn.functional as F
 from sklearn.metrics import fbeta_score
@@ -60,9 +60,13 @@ def predict(model, paths, batch_size: int, n_test_aug: int):
     return np.vstack(all_outputs), all_stems
 
 
-def get_model(num_classes):
-    model = resnet50(pretrained=True).cuda()
-    model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+def get_model(num_classes, model_name):
+    if model_name == 'resnet50':
+        model = resnet50(pretrained=True).cuda()
+        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
+    elif model_name == 'resnet101':
+        model = resnet101(pretrained=True).cuda()
+        model.fc = nn.Linear(model.fc.in_features, num_classes).cuda()
     return model
 
 
@@ -77,7 +81,7 @@ def threashold_pred(y_pred, dict_th):
 def find_threasholds(y_true, y_pred):
     threasholds = dict(zip(range(num_classes), [0.2] * num_classes))
 
-    for c in range(17):
+    for c in range(num_classes):
         temp = y_pred.copy()
 
         temp = threashold_pred(temp, threasholds)
@@ -113,7 +117,7 @@ if __name__ == '__main__':
     batch_size = 32
     num_classes = 17
     data_path = '../data'
-    model_name = 'resnet50'
+    model_name = 'resnet101'
 
     try:
         os.mkdir(os.path.join(data_path, 'predictions'))
@@ -142,11 +146,10 @@ if __name__ == '__main__':
 
         new_columns = [x for x in val_labels.columns if x != 'path']
 
-        model = get_model(num_classes)
+        model = get_model(num_classes, model_name)
         model = nn.DataParallel(model, device_ids=[0]).cuda()
 
-        if model_name == 'resnet50':
-            state = torch.load('../src/models/Resnet50/best-model_{fold}.pt'.format(fold=fold))
+        state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))
 
         epoch = state['epoch']
         step = state['step']
@@ -178,6 +181,7 @@ if __name__ == '__main__':
         f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
 
         f['val_prediction'] = val_predictions
+        f['val_true'] = y_true.values
         f['val_ids'] = list(map(lambda x: int(x.split('_')[-1].split('.')[0]), val_image_names))
         f['val_loss'] = val_loss
         f['raw_f2'] = raw_f2
