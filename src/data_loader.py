@@ -107,7 +107,7 @@ def get_loaders_tiff(batch_size,
                      train_transform=None,
                      valid_transform=None):
 
-    train_dataset = CSVDatasetTiff(f'../data/fold{fold}/train.csv', transform=train_transform)
+    train_dataset = CSVDatasetTiff(f'../data/tiff_fold{fold}/train.csv', transform=train_transform)
     train_loader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True,
@@ -122,7 +122,7 @@ def get_loaders_tiff(batch_size,
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-    valid_dataset = CSVDatasetTiff(f'../data/fold{fold}/val.csv', transform=valid_transform)
+    valid_dataset = CSVDatasetTiff(f'../data/tiff_fold{fold}/val.csv', transform=valid_transform)
     valid_loader = data.DataLoader(valid_dataset,
                                    batch_size=batch_size,
                                    shuffle=False,
