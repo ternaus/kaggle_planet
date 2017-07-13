@@ -104,7 +104,7 @@ if __name__ == '__main__':
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    train_loader, valid_loader = data_loader.get_loaders(batch_size,
+    train_loader, valid_loader = data_loader.get_loaders_tiff(batch_size,
                                                          train_transform=train_transform,
                                                          fold=args.fold)
 
