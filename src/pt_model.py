@@ -18,8 +18,8 @@ from torch import nn
 from torch.autograd import Variable
 from torch.nn import MultiLabelSoftMarginLoss
 
-from torchvision.models import resnet50, resnet152
-from torchvision.models import densenet121
+from torchvision.models import resnet50, resnet101, resnet152
+from torchvision.models import densenet121, densenet161, densenet201
 
 import torch.nn.functional as F
 import utils
@@ -71,6 +71,12 @@ def get_model(num_classes, model_type='resnet50'):
     elif model_type == 'densenet121':
         model = densenet121(pretrained=True).cuda()
         model.classifier = nn.Linear(model.classifier.in_features, num_classes).cuda()
+    elif model_type == 'densenet161':
+        model = densenet161(pretrained=True).cuda()
+        model.classifier = nn.Linear(model.classifier.in_features, num_classes).cuda()
+    elif model_type == 'densenet201':
+        model = densenet201(pretrained=True).cuda()
+        model.classifier = nn.Linear(model.classifier.in_features, num_classes).cuda()
     return model
 
 
@@ -90,6 +96,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
+    model_name = 'densenet201'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
@@ -116,7 +123,7 @@ if __name__ == '__main__':
 
     num_classes = 17
 
-    model = get_model(num_classes)
+    model = get_model(num_classes, model_name)
 
     if utils.cuda_is_available:
         if args.device_ids:
