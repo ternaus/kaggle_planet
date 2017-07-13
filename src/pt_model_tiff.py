@@ -2,20 +2,9 @@
 Experiments with pytorch
 """
 
-
-import torch.optim as optim
-import pandas as pd
-from torch import np  # Torch wrapper for Numpy
-
-import os
-from PIL import Image
-
-import torch
-from torch.utils.data.dataset import Dataset
-from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch import nn
-from torch.autograd import Variable
+
 from torch.nn import MultiLabelSoftMarginLoss
 
 from torchvision.models import resnet50, resnet101, resnet152
@@ -23,11 +12,9 @@ from torchvision.models import densenet121, densenet161, densenet201
 
 import torch.nn.functional as F
 import utils
-import tqdm
 
 from sklearn.metrics import fbeta_score
 import numpy as np
-import shutil
 import argparse
 from torch.optim import Adam
 import data_loader
@@ -96,7 +83,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'densenet201'
+    model_name = 'resnet50'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
@@ -119,7 +106,7 @@ if __name__ == '__main__':
 
     train_loader, valid_loader = data_loader.get_loaders(batch_size,
                                                          train_transform=train_transform,
-                                                         fold=0)
+                                                         fold=args.fold)
 
     num_classes = 17
 
