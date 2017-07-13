@@ -96,7 +96,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'densenet201'
+    model_name = 'resnet50'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
