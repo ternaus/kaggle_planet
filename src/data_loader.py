@@ -55,6 +55,7 @@ class CSVDatasetTiff(data.Dataset):
         img = (1.0 * img / (2 ** 8 + 1)).astype(np.uint8)
 
         return Image.fromarray(img)
+        # return img
 
     def __getitem__(self, idx):
         X = self._load_pil(self.path[idx])
@@ -65,7 +66,7 @@ class CSVDatasetTiff(data.Dataset):
 
 
 def get_loaders(batch_size,
-                fold=0,
+                fold,
                 train_transform=None,
                 valid_transform=None):
 
@@ -107,7 +108,7 @@ def get_loaders_tiff(batch_size,
                      train_transform=None,
                      valid_transform=None):
 
-    train_dataset = CSVDatasetTiff(f'../data/tiff_fold{fold}/train.csv', transform=train_transform)
+    train_dataset = CSVDatasetTiff(f'../data/fold{fold}_tiff/train.csv', transform=train_transform)
     train_loader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True,
@@ -116,13 +117,13 @@ def get_loaders_tiff(batch_size,
 
     if not valid_transform:
         valid_transform = transforms.Compose([
-          transforms.Scale(256),
+          # transforms.Scale(256),
           transforms.CenterCrop(224),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-    valid_dataset = CSVDatasetTiff(f'../data/tiff_fold{fold}/val.csv', transform=valid_transform)
+    valid_dataset = CSVDatasetTiff(f'../data/fold{fold}_tiff/val.csv', transform=valid_transform)
     valid_loader = data.DataLoader(valid_dataset,
                                    batch_size=batch_size,
                                    shuffle=False,

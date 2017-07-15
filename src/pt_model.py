@@ -86,8 +86,8 @@ def add_args(parser):
     arg('--batch-size', type=int, default=4)
     arg('--n-epochs', type=int, default=30)
     arg('--lr', type=float, default=0.0001)
-    arg('--workers', type=int, default=8)
-    arg('--fold', type=int, default=0)
+    arg('--workers', type=int, default=12)
+    arg('--fold', type=int)
     arg('--n-folds', type=int, default=10)
     arg('--clean', action='store_true')
     arg('--epoch-size', type=int)
@@ -96,7 +96,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'resnet50'
+    model_name = 'resnet101'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument

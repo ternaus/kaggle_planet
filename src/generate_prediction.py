@@ -20,6 +20,7 @@ from sklearn.metrics import log_loss
 import h5py
 import os
 from pt_model import get_model
+import shutil
 
 
 def f2_score(y_true, y_pred):
@@ -149,7 +150,7 @@ if __name__ == '__main__':
     num_aug = 17
 
     data_path = '../data'
-    model_name = 'resnet50'
+    model_name = 'resnet101'
 
     try:
         os.mkdir(os.path.join(data_path, 'predictions'))
@@ -183,6 +184,12 @@ if __name__ == '__main__':
     ])
 
     for fold in range(0, 10):
+        fold_dir = os.path.join(data_path, 'predictions', 'fold{fold}_{model_name}'.format(fold=fold, model_name=model_name))
+        try:
+            os.mkdir(fold_dir)
+        except:
+            pass
+
         val_labels = pd.read_csv('../data/fold{fold}/val.csv'.format(fold=fold))
         val_labels['id'] = val_labels['path'].str.split('/').str.get(-1)
 
@@ -194,6 +201,8 @@ if __name__ == '__main__':
         model = nn.DataParallel(model, device_ids=[0, 1]).cuda()
 
         state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))
+        shutil.copy('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name),
+                    os.path.join(fold_dir, 'best-model_{fold}.pt'.format(fold=fold, model_name=model_name)))
 
         epoch = state['epoch']
         step = state['step']
@@ -247,6 +256,22 @@ if __name__ == '__main__':
         test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, num_aug, aug=True)
         test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
 
+        df = pd.DataFrame(test_predictions, columns=new_columns)
+        df['image_name'] = test_image_names
+        df.to_hdf(os.path.join(fold_dir, 'test_center.h5'), key='prob')
+
+        df = pd.DataFrame(test_predictions_aug, columns=new_columns)
+        df['image_name'] = test_image_names_aug
+        df.to_hdf(os.path.join(fold_dir, 'test_{num_aug}.h5'.format(num_aug=num_aug)), key='prob')
+
+        df = pd.DataFrame(val_predictions, columns=new_columns)
+        df['image_name'] = val_image_names
+        df.to_hdf(os.path.join(fold_dir, 'val_center.h5'), key='prob')
+
+        df = pd.DataFrame(test_predictions_aug, columns=new_columns)
+        df['image_name'] = test_image_names_aug
+        df.to_hdf(os.path.join(fold_dir, 'val_{num_aug}.h5'.format(num_aug=num_aug)), key='prob')
+
         # Save to h5py
         f = h5py.File(os.path.join(data_path, 'predictions', model_name, 'val_pred_{fold}.hdf5'.format(fold=fold)), 'w')
 
@@ -275,14 +300,7 @@ if __name__ == '__main__':
         f['threasholds_values_aug'] = threasholds_values_aug
 
         f['test_preds'] = test_predictions
-        df = pd.DataFrame(test_predictions, columns=new_columns)
-        df['image_name'] = test_image_names
-        df.to_hdf(os.path.join(data_path, 'predictions', model_name, 'test_predictions_{fold}.hdf5'.format(fold=fold)), key='Table')
 
         f['test_preds_aug'] = test_predictions_aug
-
-        df = pd.DataFrame(test_predictions_aug, columns=new_columns)
-        df['image_name'] = test_image_names_aug
-        df.to_hdf(os.path.join(data_path, 'predictions', model_name, 'test_predictions_aug_{fold}.hdf5'.format(fold=fold)), key='Table')
 
         f.close()
