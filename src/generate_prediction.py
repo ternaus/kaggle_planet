@@ -26,7 +26,7 @@ import shutil
 def f2_score(y_true, y_pred):
     # fbeta_score throws a confusing error if inputs are not numpy arrays
     y_true, y_pred, = np.array(y_true), np.array(y_pred)
-    return fbeta_score(y_true, y_pred, beta=2)
+    return fbeta_score(y_true, y_pred, beta=2, average='samples')
 
 
 class PredictionDatasetPure:
@@ -112,14 +112,14 @@ def find_threasholds(y_true, y_pred):
 
         for t in t_range:
             temp1[:, c] = (y_pred[:, c] > t)
-            scores += [f2_score(y_true.values.ravel(), temp1.ravel())]
+            scores += [f2_score(y_true.values, temp1)]
 
         max_score_index = np.argmax(scores)
         max_threashold = t_range[max_score_index]
 
         threasholds[c] = max_threashold
 
-    assert f2_score(y_true.values.ravel(), threashold_pred(y_pred, threasholds).ravel()) > f2_score(y_true.values.ravel(), (y_pred > 0.2).ravel())
+    assert f2_score(y_true.values, threashold_pred(y_pred, threasholds)) > f2_score(y_true.values, (y_pred > 0.2))
     return threasholds
 
 
@@ -230,22 +230,22 @@ if __name__ == '__main__':
         assert val_loss > val_loss_aug
 
         # Find raw fbeta loss
-        raw_f2 = f2_score(y_true.values.ravel(), val_predictions.ravel() > 0.2)
+        raw_f2 = f2_score(y_true.values, val_predictions > 0.2)
         print('raw f2 = ', raw_f2)
 
-        raw_f2_aug = f2_score(y_true.values.ravel(), val_predictions_aug.ravel() > 0.2)
+        raw_f2_aug = f2_score(y_true.values, val_predictions_aug > 0.2)
         print('raw f2 aug = ', raw_f2_aug)
 
         # Find threasholds
         threasholds = find_threasholds(y_true, val_predictions)
         val_predictions_threasholded = apply_threasholds(val_predictions, threasholds)
-        tuned_f2 = f2_score(y_true.values.ravel(), val_predictions_threasholded.ravel())
+        tuned_f2 = f2_score(y_true.values, val_predictions_threasholded)
         print('tuned f2 = ', tuned_f2)
 
         # Find threasholds aug
         threasholds_aug = find_threasholds(y_true, val_predictions_aug)
         val_predictions_threasholded_aug = apply_threasholds(val_predictions_aug, threasholds_aug)
-        tuned_f2_aug = f2_score(y_true.values.ravel(), val_predictions_threasholded_aug.ravel())
+        tuned_f2_aug = f2_score(y_true.values, val_predictions_threasholded_aug)
         print('tuned f2 aug = ', tuned_f2_aug)
 
         assert tuned_f2 < tuned_f2_aug
