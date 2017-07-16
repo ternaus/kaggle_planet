@@ -2,9 +2,20 @@
 Experiments with pytorch
 """
 
+
+import torch.optim as optim
+import pandas as pd
+from torch import np  # Torch wrapper for Numpy
+
+import os
+from PIL import Image
+
+import torch
+from torch.utils.data.dataset import Dataset
+from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch import nn
-
+from torch.autograd import Variable
 from torch.nn import MultiLabelSoftMarginLoss
 
 from torchvision.models import resnet50, resnet101, resnet152
@@ -12,13 +23,25 @@ from torchvision.models import densenet121, densenet161, densenet201
 
 import torch.nn.functional as F
 import utils
+import tqdm
 
 from sklearn.metrics import fbeta_score
 import numpy as np
+import shutil
 import argparse
 from torch.optim import Adam
 import data_loader
 import augmentations
+
+
+def f2_loss(outputs, targets):
+    outputs = F.sigmoid(outputs)
+    tp = (outputs * targets).sum(dim=1)
+    r = tp / targets.sum(dim=1)
+    p = tp / (outputs.sum(dim=1) + 1e-5)
+    beta2 = 4
+    f2 = (1 + beta2) * p * r / (beta2 * p + r)
+    return -torch.log(f2.mean())
 
 
 def f2_score(y_true, y_pred):
@@ -73,7 +96,7 @@ def add_args(parser):
     arg('--batch-size', type=int, default=4)
     arg('--n-epochs', type=int, default=30)
     arg('--lr', type=float, default=0.0001)
-    arg('--workers', type=int, default=8)
+    arg('--workers', type=int, default=12)
     arg('--fold', type=int)
     arg('--n-folds', type=int, default=10)
     arg('--clean', action='store_true')
@@ -83,7 +106,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'resnet50'
+    model_name = 'densenet121'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
@@ -94,19 +117,17 @@ if __name__ == '__main__':
     batch_size = args.batch_size
 
     train_transform = transforms.Compose([
+        transforms.RandomSizedCrop(224),
         augmentations.D4(),
-        augmentations.RandomSizedCrop(224),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
-        # augmentations.Add(-5, 5, per_channel=True),
-        # augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
+        augmentations.Add(-5, 5, per_channel=True),
+        augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    train_loader, valid_loader = data_loader.get_loaders_tiff(batch_size,
-                                                              train_transform=train_transform,
-                                                              fold=args.fold)
+    train_loader, valid_loader = data_loader.get_loaders(batch_size, train_transform=train_transform, fold=args.fold)
 
     num_classes = 17
 
@@ -120,7 +141,8 @@ if __name__ == '__main__':
 
         model = nn.DataParallel(model, device_ids=device_ids).cuda()
 
-    criterion = MultiLabelSoftMarginLoss()
+    # criterion = MultiLabelSoftMarginLoss()
+    criterion = f2_loss
 
     utils.train(
         init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
@@ -131,5 +153,5 @@ if __name__ == '__main__':
         valid_loader=valid_loader,
         validation=validation,
         # save_predictions=save_predictions,
-        patience=4,
+        patience=2,
     )

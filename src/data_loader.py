@@ -12,6 +12,7 @@ from PIL import Image
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import tifffile as tiff
+import augmentations
 
 
 class CSVDataset(data.Dataset):
@@ -52,10 +53,10 @@ class CSVDatasetTiff(data.Dataset):
     def _load_pil(path):
         tf = tiff.imread(path)
         img = tf[:, :, [3, 0, 1]]
-        img = (1.0 * img / (2 ** 8 + 1)).astype(np.uint8)
+        # img = (1.0 * img / (2 ** 8 + 1)).astype(np.uint8)
 
-        return Image.fromarray(img)
-        # return img
+        # return Image.fromarray(img)
+        return img
 
     def __getitem__(self, idx):
         X = self._load_pil(self.path[idx])
@@ -104,7 +105,7 @@ def get_loaders(batch_size,
 
 
 def get_loaders_tiff(batch_size,
-                     fold=0,
+                     fold,
                      train_transform=None,
                      valid_transform=None):
 
@@ -118,7 +119,8 @@ def get_loaders_tiff(batch_size,
     if not valid_transform:
         valid_transform = transforms.Compose([
           # transforms.Scale(256),
-          transforms.CenterCrop(224),
+          # transforms.CenterCrop(224),
+            augmentations.CenterCrop(224),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
