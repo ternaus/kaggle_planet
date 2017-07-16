@@ -147,7 +147,7 @@ def group_aug(val_p):
 if __name__ == '__main__':
     batch_size = 192
     num_classes = 17
-    num_aug = 17
+    num_aug = 5
 
     data_path = '../data'
     model_name = 'resnet101'
@@ -257,19 +257,19 @@ if __name__ == '__main__':
         test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
 
         df = pd.DataFrame(test_predictions, columns=new_columns)
-        df['image_name'] = test_image_names
+        df.index = test_image_names
         df.to_hdf(os.path.join(fold_dir, 'test_center.h5'), key='prob')
 
         df = pd.DataFrame(test_predictions_aug, columns=new_columns)
-        df['image_name'] = test_image_names_aug
+        df.index = test_image_names_aug
         df.to_hdf(os.path.join(fold_dir, 'test_{num_aug}.h5'.format(num_aug=num_aug)), key='prob')
 
         df = pd.DataFrame(val_predictions, columns=new_columns)
-        df['image_name'] = val_image_names
+        df.index = val_image_names
         df.to_hdf(os.path.join(fold_dir, 'val_center.h5'), key='prob')
 
-        df = pd.DataFrame(test_predictions_aug, columns=new_columns)
-        df['image_name'] = test_image_names_aug
+        df = pd.DataFrame(val_predictions_aug, columns=new_columns)
+        df.index = val_image_names_aug
         df.to_hdf(os.path.join(fold_dir, 'val_{num_aug}.h5'.format(num_aug=num_aug)), key='prob')
 
         # Save to h5py
