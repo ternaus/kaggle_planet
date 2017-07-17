@@ -50,7 +50,7 @@ def match_percentiles(im_tif, im_jpg):
     # The function could stop here, but we are going to plot a few charts about its results
     im_tif_adjusted = tif2jpg(im_tif[..., :3])
 
-    return cv2.cvtColor(im_tif_adjusted, cv2.COLOR_BGR2RGB)
+    return im_tif_adjusted[:, :, ::-1]
 
 
 class CSVDataset(data.Dataset):
