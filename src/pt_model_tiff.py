@@ -98,8 +98,8 @@ if __name__ == '__main__':
         augmentations.RandomSizedCrop(224),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
-        # augmentations.Add(-5, 5, per_channel=True),
-        # augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
+        augmentations.Add(-5, 5, per_channel=True),
+        augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -131,5 +131,5 @@ if __name__ == '__main__':
         valid_loader=valid_loader,
         validation=validation,
         # save_predictions=save_predictions,
-        patience=4,
+        patience=2,
     )

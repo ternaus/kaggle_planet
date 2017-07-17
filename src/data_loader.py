@@ -44,13 +44,13 @@ def match_percentiles(im_tif, im_jpg):
     convert_channel = lambda im, c: np.interp(im[..., c], x_per_channel[c], y_per_channel[c])
 
     # Convert all channels, join and cast to uint8 at range [0, 255]
-    # tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)]).clip(0, 255).astype(np.uint8)
-    tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)])
+    tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)]).clip(0, 255).astype(np.uint8)
+    # tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)])
 
     # The function could stop here, but we are going to plot a few charts about its results
     im_tif_adjusted = tif2jpg(im_tif[..., :3])
 
-    return im_tif_adjusted[:, :, ::-1]
+    return Image.fromarray(im_tif_adjusted[:, :, ::-1])
 
 
 class CSVDataset(data.Dataset):
