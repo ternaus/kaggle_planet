@@ -28,9 +28,15 @@ from torch import nn
 from torch.autograd import Variable
 from torchvision.transforms import ToTensor, Normalize, Compose
 import tqdm
+import tifffile as tiff
+import cv2
+import os
+import data_loader
 
 
 DATA_ROOT = Path(__file__).absolute().parent / 'data'
+tif_folder = '../data/test-tif-v2'
+jpg_folder = '../data/test-jpg'
 
 cuda_is_available = torch.cuda.is_available()
 
@@ -53,6 +59,18 @@ img_transform = Compose([
 
 def load_image(path: Path) -> Image.Image:
     return Image.open(str(path)).convert('RGB')
+
+
+def load_image_tiff(path: Path) -> np.array:
+    file_name = path.split('/')[-1].split('.')[0]
+
+    im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
+    im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
+
+    im_jpg = cv2.imread(os.path.join(jpg_folder, file_name + '.jpg'))
+
+    tuned_tif = data_loader.match_percentiles(im_tif, im_jpg)
+    return tuned_tif
 
 
 def train_valid_split(args, img_paths):
@@ -81,19 +99,6 @@ def write_event(log, step: int, **data):
     log.write(json.dumps(data, sort_keys=True))
     log.write('\n')
     log.flush()
-
-
-# def add_args(parser):
-#     arg = parser.add_argument
-#     arg('root', help='checkpoint root')
-#     arg('--batch-size', type=int, default=4)
-#     arg('--n-epochs', type=int, default=100)
-#     arg('--lr', type=float, default=0.0001)
-#     arg('--workers', type=int, default=2)
-#     arg('--fold', type=int, default=1)
-#     arg('--n-folds', type=int, default=5)
-#     arg('--clean', action='store_true')
-#     arg('--epoch-size', type=int)
 
 
 def train(args,
@@ -213,59 +218,3 @@ def imap_fixed_output_buffer(fn, it, threads: int):
         for future in futures:
             yield future.result()
 
-
-def plot(*args, ymin=None, ymax=None, xmin=None, xmax=None, params=False,
-         max_points=200, legend=True):
-    """ Use in the notebook like this:
-    plot('./runs/oc2', './runs/oc1', 'loss', 'valid_loss')
-    """
-    paths, keys = [], []
-    for x in args:
-        if x.startswith('.') or x.startswith('/'):
-            if '*' in x:
-                paths.extend(glob.glob(x))
-            else:
-                paths.append(x)
-        else:
-            keys.append(x)
-    plt.figure(figsize=(12, 8))
-    keys = keys or ['loss', 'valid_loss']
-
-    ylim_kw = {}
-    if ymin is not None:
-        ylim_kw['ymin'] = ymin
-    if ymax is not None:
-        ylim_kw['ymax'] = ymax
-    if ylim_kw:
-        plt.ylim(**ylim_kw)
-
-    xlim_kw = {}
-    if xmin is not None:
-        xlim_kw['xmin'] = xmin
-    if xmax is not None:
-        xlim_kw['xmax'] = xmax
-    if xlim_kw:
-        plt.xlim(**xlim_kw)
-    for path in sorted(paths):
-        path = Path(path)
-        with json_lines.open(str(path.joinpath('train.log')), broken=True) as f:
-            events = list(f)
-        if params:
-            print(path)
-            pprint(json.loads(path.joinpath('params.json').read_text()))
-        for key in sorted(keys):
-            xs, ys = [], []
-            for e in events:
-                if key in e:
-                    xs.append(e['step'])
-                    ys.append(e[key])
-            if xs:
-                if len(xs) > 2 * max_points:
-                    indices = (np.arange(0, len(xs), len(xs) / max_points)
-                               .astype(np.int32))
-                    xs = np.array(xs)[indices[1:]]
-                    ys = [np.mean(ys[idx: indices[i + 1]])
-                          for i, idx in enumerate(indices[:-1])]
-                plt.plot(xs, ys, label='{}: {}'.format(path, key))
-    if legend:
-        plt.legend()

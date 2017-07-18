@@ -9,7 +9,6 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader
-from torchvision.models import resnet50, resnet101
 from pathlib import Path
 import torch.nn.functional as F
 from sklearn.metrics import fbeta_score
@@ -53,7 +52,7 @@ class PredictionDatasetAug:
 
     def __getitem__(self, idx):
         path = self.paths[idx % len(self.paths)]
-        image = utils.load_image(path)
+        image = utils.load_image_tif(path)
         return valid_transform_aug(image), path.stem
 
 
