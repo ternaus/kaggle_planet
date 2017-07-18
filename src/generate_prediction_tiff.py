@@ -146,7 +146,7 @@ def group_aug(val_p):
 if __name__ == '__main__':
     batch_size = 216
     num_classes = 17
-    num_aug = 17
+    num_aug = 3
 
     data_path = '../data'
     model_name = 'resnet50tiff'
@@ -258,8 +258,8 @@ if __name__ == '__main__':
         test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, num_aug, aug=True)
         test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
 
-        assert len(set(test_predictions_aug)) == len(set(test_image_names))
-        assert len(set(test_predictions_aug)) == len(test_paths)
+        assert len(set(test_image_names_aug)) == len(set(test_image_names))
+        assert len(set(test_image_names_aug)) == len(test_paths)
 
         df = pd.DataFrame(test_predictions, columns=new_columns)
         df.index = test_image_names
