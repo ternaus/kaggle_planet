@@ -35,8 +35,14 @@ import data_loader
 
 
 DATA_ROOT = Path(__file__).absolute().parent / 'data'
-tif_folder = '../data/test-tif-v2'
-jpg_folder = '../data/test-jpg'
+
+
+test_tif_folder = '../data/test-tif-v2'
+test_jpg_folder = '../data/test-jpg'
+
+train_tif_folder = '../data/train-tif-v2'
+train_jpg_folder = '../data/train-jpg'
+
 
 cuda_is_available = torch.cuda.is_available()
 
@@ -64,10 +70,14 @@ def load_image(path: Path) -> Image.Image:
 def load_image_tif(path: Path) -> np.array:
     file_name = str(path).split('/')[-1].split('.')[0]
 
-    im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
-    im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
+    if 'train' in file_name:
+        im_tif = tiff.imread(os.path.join(train_tif_folder, file_name + '.tif'))
+        im_jpg = cv2.imread(os.path.join(train_jpg_folder, file_name + '.jpg'))
+    else:
+        im_tif = tiff.imread(os.path.join(test_tif_folder, file_name + '.tif'))
+        im_jpg = cv2.imread(os.path.join(test_jpg_folder, file_name + '.jpg'))
 
-    im_jpg = cv2.imread(os.path.join(jpg_folder, file_name + '.jpg'))
+    im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
 
     tuned_tif = data_loader.match_percentiles(im_tif, im_jpg)
     return tuned_tif
