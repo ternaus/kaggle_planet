@@ -83,7 +83,7 @@ def add_args(parser):
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'resnet50'
+    model_name = 'densenet121'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
@@ -98,8 +98,8 @@ if __name__ == '__main__':
         augmentations.RandomSizedCrop(224),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
-        augmentations.Add(-5, 5, per_channel=True),
-        augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
+        # augmentations.Add(-5, 5, per_channel=True),
+        # augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])

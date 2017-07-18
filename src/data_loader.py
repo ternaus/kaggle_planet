@@ -39,18 +39,19 @@ def match_percentiles(im_tif, im_jpg):
     x_per_channel = [np.percentile(im_tif[..., c].ravel(), percentiles) for c in range(3)]
     y_per_channel = [np.percentile(im_jpg[..., c].ravel(), percentiles) for c in range(3)]
 
-    # This is the main part: we use np.interp to convert intermadiate values between
+    # This is the main part: we use np.interp to convert intermediate values between
     # percentiles from TIF to JPG
     convert_channel = lambda im, c: np.interp(im[..., c], x_per_channel[c], y_per_channel[c])
 
     # Convert all channels, join and cast to uint8 at range [0, 255]
-    tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)]).clip(0, 255).astype(np.uint8)
-    # tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)])
+    # tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)]).clip(0, 255).astype(np.uint8)
+    tif2jpg = lambda im: np.dstack([convert_channel(im, c) for c in range(3)])
 
     # The function could stop here, but we are going to plot a few charts about its results
     im_tif_adjusted = tif2jpg(im_tif[..., :3])
 
-    return Image.fromarray(im_tif_adjusted[:, :, ::-1])
+    return im_tif_adjusted[:, :, ::-1]
+    # return Image.fromarray(im_tif_adjusted[:, :, ::-1])
 
 
 class CSVDataset(data.Dataset):
@@ -151,9 +152,9 @@ def get_loaders_tiff(batch_size,
 
     if not valid_transform:
         valid_transform = transforms.Compose([
-          transforms.Scale(256),
-          transforms.CenterCrop(224),
-          #   augmentations.CenterCrop(224),
+          # transforms.Scale(256),
+          # transforms.CenterCrop(224),
+            augmentations.CenterCrop(224),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
