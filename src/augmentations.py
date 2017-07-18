@@ -155,7 +155,27 @@ class CenterCrop(object):
         x1 = int(round((w - tw) / 2.))
         y1 = int(round((h - th) / 2.))
         return img[y1:y1 + th, x1:x1 + th, :].astype(np.int64)
-        # return img.crop((x1, y1, x1 + tw, y1 + th))
+
+
+class RandomCrop(object):
+    """Crops the given np.array randomly to have a region of
+    the given size. size can be a tuple (target_height, target_width)
+    or an integer, in which case the target will be of a square shape (size, size)
+    """
+
+    def __init__(self, size):
+        if isinstance(size, numbers.Number):
+            self.size = (int(size), int(size))
+        else:
+            self.size = size
+
+    def __call__(self, img):
+        h, w = img.shape[0], img.shape[1]
+        # w, h = img.size
+        th, tw = self.size
+        x1 = np.random.randint(0, w - tw - 1)
+        y1 = np.random.randint(0, h - th - 1)
+        return img[y1:y1 + th, x1:x1 + th, :].astype(np.int64)
 
 
 class RandomSizedCrop(object):
@@ -188,16 +208,10 @@ class RandomSizedCrop(object):
 
                 img = img[y1:y1+h, x1:x1+w, :]
 
-                # img = img.crop((x1, y1, x1 + w, y1 + h))
                 assert img.shape[0] == h
                 assert img.shape[1] == w
-                # assert(img.size == (w, h))
 
                 return cv2.resize(img, (self.size, self.size), interpolation=self.interpolation).astype(np.int64)
-
-                return result
-
-                # return img.resize((self.size, self.size), self.interpolation)
 
         # Fallback
         scale = cv2.resize(img, (self.size, self.size), interpolation=self.interpolation)
