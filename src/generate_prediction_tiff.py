@@ -212,7 +212,7 @@ if __name__ == '__main__':
         model = get_model(num_classes, model_name.replace('tiff', ''))
         model = nn.DataParallel(model, device_ids=[0, 1, 2]).cuda()
 
-        state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name.replace('tiff', '')))
+        state = torch.load('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name))
         shutil.copy('../src/models/{model_name}/best-model_{fold}.pt'.format(fold=fold, model_name=model_name),
                     os.path.join(fold_dir, 'best-model_{fold}.pt'.format(fold=fold, model_name=model_name)))
 
