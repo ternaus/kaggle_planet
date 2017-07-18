@@ -38,7 +38,7 @@ class PredictionDatasetPure:
 
     def __getitem__(self, idx):
         path = self.paths[idx % len(self.paths)]
-        image = utils.load_image(path)
+        image = utils.load_image_tif(path)
         return valid_transform_pure(image), path.stem
 
 
