@@ -61,7 +61,7 @@ def load_image(path: Path) -> Image.Image:
     return Image.open(str(path)).convert('RGB')
 
 
-def load_image_tiff(path: Path) -> np.array:
+def load_image_tif(path: Path) -> np.array:
     file_name = path.split('/')[-1].split('.')[0]
 
     im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
