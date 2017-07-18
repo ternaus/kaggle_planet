@@ -62,7 +62,7 @@ def load_image(path: Path) -> Image.Image:
 
 
 def load_image_tif(path: Path) -> np.array:
-    file_name = path.split('/')[-1].split('.')[0]
+    file_name = str(path).split('/')[-1].split('.')[0]
 
     im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
     im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
