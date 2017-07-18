@@ -163,15 +163,6 @@ if __name__ == '__main__':
 
     sample = pd.read_csv(os.path.join(data_path, 'sample_submission_v2.csv'))
 
-    mapping = pd.read_csv(os.path.join(data_path, 'test_v2_file_mapping.csv'))
-    mapping['old'] = mapping['old'].str.replace('.tif', '').values
-    mapping['new'] = mapping['new'].str.replace('.tif', '').values
-
-    from_ = mapping['old']
-    to_ = mapping['new']
-
-    map_dict = dict(zip(from_, to_))
-
     test_paths = [os.path.join('../data/test-tif-v2', x + '.tif') for x in sample['image_name']]
 
     valid_transform_pure = transforms.Compose([
@@ -264,14 +255,8 @@ if __name__ == '__main__':
         test_p = predict(model, list(map(Path, test_paths)), batch_size, 1, aug=False)
         test_predictions, test_image_names = group_aug(test_p)
 
-        # There is some fucked up business with naming. We need to rename some prediction labels
-
-        test_image_names = [map_dict[x] if x in map_dict.keys() else x for x in test_image_names]
-
         test_p_aug = predict(model, list(map(Path, test_paths)), batch_size, num_aug, aug=True)
         test_predictions_aug, test_image_names_aug = group_aug(test_p_aug)
-
-        test_image_names_aug = [map_dict[x] if x in map_dict.keys() else x for x in test_image_names_aug]
 
         assert len(set(test_predictions_aug)) == len(set(test_image_names))
         assert len(set(test_predictions_aug)) == len(test_paths)
