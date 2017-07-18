@@ -19,6 +19,7 @@ import argparse
 from torch.optim import Adam
 import data_loader
 import augmentations
+import models
 
 
 def f2_score(y_true, y_pred):
@@ -78,12 +79,12 @@ def add_args(parser):
     arg('--n-folds', type=int, default=10)
     arg('--clean', action='store_true')
     arg('--epoch-size', type=int)
+    arg('--model', type=str)
     arg('--device-ids', type=str, help='For example 0,1 to run on two GPUs')
 
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'densenet121'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
@@ -91,15 +92,17 @@ if __name__ == '__main__':
     add_args(parser)
     args = parser.parse_args()
 
+    model_name = args.model
+
     batch_size = args.batch_size
 
     train_transform = transforms.Compose([
+        transforms.RandomSizedCrop(224),
         augmentations.D4(),
-        augmentations.RandomSizedCrop(224),
         # augmentations.Rotate(),
         # augmentations.GaussianBlur(),
-        # augmentations.Add(-5, 5, per_channel=True),
-        # augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
+        augmentations.Add(-5, 5, per_channel=True),
+        augmentations.ContrastNormalization(0.8, 1.2, per_channel=True),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -112,6 +115,11 @@ if __name__ == '__main__':
 
     model = get_model(num_classes, model_name)
 
+    fresh_params = model.fc.parameters()
+
+    # model = getattr(models, args.model)(num_classes=num_classes)
+    # model = utils.cuda(model)
+
     if utils.cuda_is_available:
         if args.device_ids:
             device_ids = list(map(int, args.device_ids.split(',')))
@@ -122,14 +130,47 @@ if __name__ == '__main__':
 
     criterion = MultiLabelSoftMarginLoss()
 
-    utils.train(
-        init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+    #
+    # train_loader, valid_loader = map(make_loader,
+    #                                  [train_paths, valid_paths])
+    # if root.exists() and args.clean:
+    #     shutil.rmtree(str(root))
+    # root.mkdir(exist_ok=True)
+    # root.joinpath('params.json').write_text(
+    #     json.dumps(vars(args), indent=True, sort_keys=True))
+
+    train_kwargs = dict(
         args=args,
         model=model,
         criterion=criterion,
         train_loader=train_loader,
         valid_loader=valid_loader,
         validation=validation,
-        # save_predictions=save_predictions,
-        patience=2,
+        patience=4,
     )
+
+    # if getattr(model, 'finetune', None):
+    utils.train(
+        init_optimizer=lambda lr: Adam(fresh_params, lr=lr),
+        n_epochs=1,
+        **train_kwargs)
+
+    utils.train(
+        init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+        **train_kwargs)
+    # else:
+    #     utils.train(
+    #         init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+    #         **train_kwargs)
+
+    # utils.train(
+    #     init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+    #     args=args,
+    #     model=model,
+    #     criterion=criterion,
+    #     train_loader=train_loader,
+    #     valid_loader=valid_loader,
+    #     validation=validation,
+    #     # save_predictions=save_predictions,
+    #     patience=3,
+    # )

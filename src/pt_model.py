@@ -32,6 +32,7 @@ import argparse
 from torch.optim import Adam
 import data_loader
 import augmentations
+import models
 
 
 def f2_score(y_true, y_pred):
@@ -92,17 +93,18 @@ def add_args(parser):
     arg('--clean', action='store_true')
     arg('--epoch-size', type=int)
     arg('--device-ids', type=str, help='For example 0,1 to run on two GPUs')
+    arg('--model', type=str)
 
 
 if __name__ == '__main__':
     random_state = 2016
-    model_name = 'resnet101'
 
     parser = argparse.ArgumentParser()
     arg = parser.add_argument
     arg('--mode', choices=['train', 'valid', 'predict_valid', 'predict_test'], default='train')
     add_args(parser)
     args = parser.parse_args()
+    model_name = args.model
 
     batch_size = args.batch_size
 
@@ -121,7 +123,11 @@ if __name__ == '__main__':
 
     num_classes = 17
 
+    # model = get_model(num_classes, model_name)
+
+    # model = getattr(models, args.model)(num_classes=num_classes)
     model = get_model(num_classes, model_name)
+    model = utils.cuda(model)
 
     if utils.cuda_is_available:
         if args.device_ids:
@@ -133,14 +139,41 @@ if __name__ == '__main__':
 
     criterion = MultiLabelSoftMarginLoss()
 
-    utils.train(
-        init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+    train_kwargs = dict(
         args=args,
         model=model,
         criterion=criterion,
         train_loader=train_loader,
         valid_loader=valid_loader,
         validation=validation,
-        # save_predictions=save_predictions,
-        patience=2,
+        patience=4,
     )
+
+    if getattr(model, 'finetune', None):
+        utils.train(
+            init_optimizer=lambda lr: Adam(model.net.fc.parameters(), lr=lr),
+            n_epochs=1,
+            **train_kwargs)
+
+        utils.train(
+            init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+            **train_kwargs)
+    else:
+        utils.train(
+            init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+            **train_kwargs)
+
+
+    #
+    #
+    # utils.train(
+    #     init_optimizer=lambda lr: Adam(model.parameters(), lr=lr),
+    #     args=args,
+    #     model=model,
+    #     criterion=criterion,
+    #     train_loader=train_loader,
+    #     valid_loader=valid_loader,
+    #     validation=validation,
+    #     # save_predictions=save_predictions,
+    #     patience=2,
+    # )

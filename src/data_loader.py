@@ -55,8 +55,8 @@ def match_percentiles(im_tif, im_jpg):
 
 
 class CSVDataset(data.Dataset):
-    def __init__(self, path, transform=None):
-        df = pd.read_csv(path)
+    def __init__(self, df, transform=None):
+        # df = pd.read_csv(path)
         self.path = df.iloc[:, 0].values.astype(str)
         self.target = df.iloc[:, 1:].values.astype(np.float32)
         self.transform = transform
@@ -78,42 +78,67 @@ class CSVDataset(data.Dataset):
         return X, y
 
 
-class CSVDatasetTiff(data.Dataset):
-    def __init__(self, path, transform=None):
-        df = pd.read_csv(path)
-        self.path = df.iloc[:, 0].values.astype(str)
-        self.target = df.iloc[:, 1:].values.astype(np.float32)
-        self.transform = transform
+# class CSVDatasetTiff(data.Dataset):
+#     def __init__(self, path, transform=None):
+#         df = pd.read_csv(path)
+#         self.path = df.iloc[:, 0].values.astype(str)
+#         self.target = df.iloc[:, 1:].values.astype(np.float32)
+#         self.transform = transform
+#
+#     def __len__(self):
+#         return self.target.shape[0]
+#
+#     @staticmethod
+#     def _load_pil(path):
+#         with open(path, 'rb') as f:
+#             with Image.open(f) as img:
+#                 return img.convert('RGB')
+#
+#     def __getitem__(self, idx):
+#         X = self._load_pil(self.path[idx])
+#         if self.transform:
+#             X = self.transform(X)
+#         y = self.target[idx]
+#         return X, y
 
-    def __len__(self):
-        return self.target.shape[0]
 
-    @staticmethod
-    def _load_pil(path):
-        file_name = path.split('/')[-1].split('.')[0]
-
-        im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
-        im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
-
-        im_jpg = cv2.imread(os.path.join(jpg_folder, file_name + '.jpg'))
-
-        tuned_tif = match_percentiles(im_tif, im_jpg)
-        return tuned_tif
-
-    def __getitem__(self, idx):
-        X = self._load_pil(self.path[idx])
-        if self.transform:
-            X = self.transform(X)
-        y = self.target[idx]
-        return X, y
+# class CSVDatasetTiff(data.Dataset):
+#     def __init__(self, path, transform=None):
+#         df = pd.read_csv(path)
+#         self.path = df.iloc[:, 0].values.astype(str)
+#         self.target = df.iloc[:, 1:].values.astype(np.float32)
+#         self.transform = transform
+#
+#     def __len__(self):
+#         return self.target.shape[0]
+#
+#     @staticmethod
+#     def _load_pil(path):
+#         file_name = path.split('/')[-1].split('.')[0]
+#
+#         im_tif = tiff.imread(os.path.join(tif_folder, file_name + '.tif'))
+#         im_tif[:, :, 2] = im_tif[:, :, 3]  # Replace R channel with NIR
+#
+#         im_jpg = cv2.imread(os.path.join(jpg_folder, file_name + '.jpg'))
+#
+#         tuned_tif = match_percentiles(im_tif, im_jpg)
+#         return tuned_tif
+#
+#     def __getitem__(self, idx):
+#         X = self._load_pil(self.path[idx])
+#         if self.transform:
+#             X = self.transform(X)
+#         y = self.target[idx]
+#         return X, y
 
 
 def get_loaders(batch_size,
                 fold,
                 train_transform=None,
                 valid_transform=None):
+    train_df = pd.read_csv(f'../data/fold{fold}/train.csv')
 
-    train_dataset = CSVDataset(f'../data/fold{fold}/train.csv', transform=train_transform)
+    train_dataset = CSVDataset(train_df, transform=train_transform)
     train_loader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True,
@@ -128,7 +153,9 @@ def get_loaders(batch_size,
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-    valid_dataset = CSVDataset(f'../data/fold{fold}/val.csv', transform=valid_transform)
+    valid_df = pd.read_csv(f'../data/fold{fold}/train.csv')
+
+    valid_dataset = CSVDataset(valid_df, transform=valid_transform)
     valid_loader = data.DataLoader(valid_dataset,
                                    batch_size=batch_size,
                                    shuffle=False,
@@ -143,7 +170,12 @@ def get_loaders_tiff(batch_size,
                      train_transform=None,
                      valid_transform=None):
 
-    train_dataset = CSVDatasetTiff(f'../data/fold{fold}_tiff/train.csv', transform=train_transform)
+    train_df = pd.read_csv(f'../data/fold{fold}/train.csv')
+
+    train_df['path'] = train_df['path'].str.replace('train-jpg', 'train-tif-v2_new')
+
+    train_dataset = CSVDataset(train_df, transform=train_transform)
+
     train_loader = data.DataLoader(train_dataset,
                                    batch_size=batch_size,
                                    shuffle=True,
@@ -153,13 +185,17 @@ def get_loaders_tiff(batch_size,
     if not valid_transform:
         valid_transform = transforms.Compose([
           # transforms.Scale(256),
-          # transforms.CenterCrop(224),
-            augmentations.CenterCrop(224),
+          transforms.CenterCrop(224),
+            # augmentations.CenterCrop(224),
           transforms.ToTensor(),
           transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
-    valid_dataset = CSVDatasetTiff(f'../data/fold{fold}_tiff/val.csv', transform=valid_transform)
+    valid_df = pd.read_csv(f'../data/fold{fold}/val.csv')
+    valid_df['path'] = valid_df['path'].str.replace('train-jpg', 'train-tif-v2_new')
+
+    valid_dataset = CSVDataset(valid_df, transform=valid_transform)
+
     valid_loader = data.DataLoader(valid_dataset,
                                    batch_size=batch_size,
                                    shuffle=False,
