@@ -16,6 +16,7 @@ import augmentations
 # import skimage.io
 import os
 import cv2
+from pathlib import Path
 
 
 percentile_eps = 0.5
@@ -203,3 +204,7 @@ def get_loaders_tiff(batch_size,
                                    pin_memory=True)
 
     return train_loader, valid_loader
+
+
+def load_image(path: Path):
+    return Image.open(str(path)).convert('RGB')

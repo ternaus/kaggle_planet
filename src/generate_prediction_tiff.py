@@ -38,7 +38,7 @@ class PredictionDatasetPure:
 
     def __getitem__(self, idx):
         path = self.paths[idx % len(self.paths)]
-        image = utils.load_image_tif(path)
+        image = utils.load_image(path)
         return valid_transform_pure(image), path.stem
 
 
@@ -52,7 +52,7 @@ class PredictionDatasetAug:
 
     def __getitem__(self, idx):
         path = self.paths[idx % len(self.paths)]
-        image = utils.load_image_tif(path)
+        image = utils.load_image(path)
         return valid_transform_aug(image), path.stem
 
 
@@ -144,12 +144,12 @@ def group_aug(val_p):
 
 
 if __name__ == '__main__':
-    batch_size = 216
+    batch_size = 600
     num_classes = 17
-    num_aug = 3
+    num_aug = 17
 
     data_path = '../data'
-    model_name = 'resnet50tiff'
+    model_name = 'resnet152tiff'
 
     try:
         os.mkdir(os.path.join(data_path, 'predictions'))
@@ -163,12 +163,12 @@ if __name__ == '__main__':
 
     sample = pd.read_csv(os.path.join(data_path, 'sample_submission_v2.csv'))
 
-    test_paths = [os.path.join('../data/test-tif-v2', x + '.tif') for x in sample['image_name']]
+    test_paths = [os.path.join('../data/test-tif-v2_new', x + '.jpg') for x in sample['image_name']]
 
     valid_transform_pure = transforms.Compose([
         # transforms.Scale(256),
-        augmentations.CenterCrop(224),
-        # transforms.CenterCrop(224),
+        # augmentations.CenterCrop(224),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
@@ -193,6 +193,9 @@ if __name__ == '__main__':
             pass
 
         val_labels = pd.read_csv('../data/fold{fold}/val.csv'.format(fold=fold))
+
+        val_labels['path'] = val_labels['path'].str.replace('train-jpg', 'train-tif-v2_new')
+
         val_labels['id'] = val_labels['path'].str.split('/').str.get(-1)
 
         y_true = val_labels.sort_values(by='id').drop(['path', 'id'], 1)

@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     model = get_model(num_classes, model_name)
 
-    fresh_params = model.fc.parameters()
+    fresh_params = model.classifier.parameters()
 
     # model = getattr(models, args.model)(num_classes=num_classes)
     # model = utils.cuda(model)
